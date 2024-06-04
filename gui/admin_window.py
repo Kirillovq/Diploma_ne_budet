@@ -47,13 +47,11 @@ class AdminWindow(QMainWindow):
         self.button_view_parts_quantity.clicked.connect(self.view_parts_quantity)
         layout.addWidget(self.button_view_parts_quantity, 3, 0)
 
-        self.button_manage_tables = self.create_button('Управление таблицами')
-        self.button_manage_tables.clicked.connect(self.manage_tables)
-        layout.addWidget(self.button_manage_tables, 3, 1)
+
 
         self.button_back = self.create_button('Назад')
         self.button_back.clicked.connect(self.back)
-        layout.addWidget(self.button_back, 4, 0, 1, 2)
+        layout.addWidget(self.button_back, 3, 1)
 
         self.central_widget.setLayout(layout)
 
@@ -227,7 +225,7 @@ class ManageEmployeesWindow(QMainWindow):
                           (first_name, last_name, position, salary, employee_id))
             QMessageBox.information(self, 'Успех', 'Сотрудник обновлен')
         else:
-            execute_query("INSERT INTO employees (first_name, last_name, position, salary) VALUES (?, ?, ?, ?)",
+            execute_query("INSERT INTO employees (first_name, last_name, position, salary) VALUES (?, ?, ?, ?, ?)",
                           (first_name, last_name, position, salary))
             QMessageBox.information(self, 'Успех', 'Сотрудник добавлен')
 
@@ -637,54 +635,66 @@ class TablesWindow(QMainWindow):
         return button
 
     def load_table(self):
-        table_name = self.combo_tables.currentText()
-        data = fetch_all(f"SELECT * FROM {table_name}")
-        if data:
-            headers = [description[0] for description in fetch_all(f"PRAGMA table_info({table_name})")]
-            self.table.setColumnCount(len(headers))
-            self.table.setRowCount(len(data))
-            self.table.setHorizontalHeaderLabels(headers)
+        try:
+            table_name = self.combo_tables.currentText()
+            data = fetch_all(f"SELECT * FROM {table_name}")
+            if data:
+                headers = [description[0] for description in fetch_all(f"PRAGMA table_info({table_name})")]
+                self.table.setColumnCount(len(headers))
+                self.table.setRowCount(len(data))
+                self.table.setHorizontalHeaderLabels(headers)
 
-            for row_index, row_data in enumerate(data):
-                for col_index, col_data in enumerate(row_data):
-                    self.table.setItem(row_index, col_index, QTableWidgetItem(str(col_data)))
-        else:
-            self.table.setColumnCount(0)
-            self.table.setRowCount(0)
+                for row_index, row_data in enumerate(data):
+                    for col_index, col_data in enumerate(row_data):
+                        self.table.setItem(row_index, col_index, QTableWidgetItem(str(col_data)))
+            else:
+                self.table.setColumnCount(0)
+                self.table.setRowCount(0)
+        except Exception as e:
+            QMessageBox.critical(self, 'Ошибка', f"Не удалось загрузить таблицу: {str(e)}")
 
     def add_row(self):
-        table_name = self.combo_tables.currentText()
-        column_count = self.table.columnCount()
-        columns = ', '.join([self.table.horizontalHeaderItem(i).text() for i in range(column_count)])
-        placeholders = ', '.join(['?' for _ in range(column_count)])
-        row_data = [self.table.item(self.table.rowCount() - 1, i).text() for i in range(column_count)]
+        try:
+            table_name = self.combo_tables.currentText()
+            column_count = self.table.columnCount()
+            columns = ', '.join([self.table.horizontalHeaderItem(i).text() for i in range(column_count)])
+            placeholders = ', '.join(['?' for _ in range(column_count)])
+            row_data = [self.table.item(self.table.rowCount() - 1, i).text() for i in range(column_count)]
 
-        execute_query(f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})", tuple(row_data))
-        QMessageBox.information(self, 'Успех', 'Строка добавлена')
-        self.load_table()
+            execute_query(f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})", tuple(row_data))
+            QMessageBox.information(self, 'Успех', 'Строка добавлена')
+            self.load_table()
+        except Exception as e:
+            QMessageBox.critical(self, 'Ошибка', f"Не удалось добавить строку: {str(e)}")
 
     def delete_row(self):
-        table_name = self.combo_tables.currentText()
-        row = self.table.currentRow()
-        primary_key = self.table.horizontalHeaderItem(0).text()
-        primary_key_value = self.table.item(row, 0).text()
+        try:
+            table_name = self.combo_tables.currentText()
+            row = self.table.currentRow()
+            primary_key = self.table.horizontalHeaderItem(0).text()
+            primary_key_value = self.table.item(row, 0).text()
 
-        execute_query(f"DELETE FROM {table_name} WHERE {primary_key} = ?", (primary_key_value,))
-        QMessageBox.information(self, 'Успех', 'Строка удалена')
-        self.load_table()
+            execute_query(f"DELETE FROM {table_name} WHERE {primary_key} = ?", (primary_key_value,))
+            QMessageBox.information(self, 'Успех', 'Строка удалена')
+            self.load_table()
+        except Exception as e:
+            QMessageBox.critical(self, 'Ошибка', f"Не удалось удалить строку: {str(e)}")
 
     def update_row(self):
-        table_name = self.combo_tables.currentText()
-        row = self.table.currentRow()
-        column_count = self.table.columnCount()
-        primary_key = self.table.horizontalHeaderItem(0).text()
-        primary_key_value = self.table.item(row, 0).text()
-        set_clause = ', '.join([f"{self.table.horizontalHeaderItem(i).text()} = ?" for i in range(1, column_count)])
-        row_data = [self.table.item(row, i).text() for i in range(1, column_count)]
+        try:
+            table_name = self.combo_tables.currentText()
+            row = self.table.currentRow()
+            column_count = self.table.columnCount()
+            primary_key = self.table.horizontalHeaderItem(0).text()
+            primary_key_value = self.table.item(row, 0).text()
+            set_clause = ', '.join([f"{self.table.horizontalHeaderItem(i).text()} = ?" for i in range(1, column_count)])
+            row_data = [self.table.item(row, i).text() for i in range(1, column_count)]
 
-        execute_query(f"UPDATE {table_name} SET {set_clause} WHERE {primary_key} = ?", (*row_data, primary_key_value))
-        QMessageBox.information(self, 'Успех', 'Строка обновлена')
-        self.load_table()
+            execute_query(f"UPDATE {table_name} SET {set_clause} WHERE {primary_key} = ?", (*row_data, primary_key_value))
+            QMessageBox.information(self, 'Успех', 'Строка обновлена')
+            self.load_table()
+        except Exception as e:
+            QMessageBox.critical(self, 'Ошибка', f"Не удалось обновить строку: {str(e)}")
 
     def back(self):
         self.close()
